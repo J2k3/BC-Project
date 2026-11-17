@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Badminton Club System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    if (window.tailwind) {
+      tailwind.config = { darkMode: 'class' };
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('badminton_theme') || 'system';
+        var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', t === 'dark' || (t === 'system' && dark));
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col md:flex-row transition-colors">
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden transition-all duration-200">
+    <div class="bg-slate-900 dark:bg-slate-800 text-white border border-slate-700 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-medium">
+      <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+      <span id="toast-msg">Done</span>
+    </div>
+  </div>
+
+  <!-- Mobile Header -->
+  <header class="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+    <div class="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+      <span class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center"><i data-lucide="trophy" class="w-4 h-4"></i></span>
+      <span>Badminton Club 羽球账本</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="button" onclick="cycleTheme()" class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+        <i id="mobile-theme-icon" data-lucide="monitor" class="w-4 h-4"></i>
+      </button>
+      <button type="button" onclick="toggleMobileMenu()" class="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-medium">Menu 菜单</button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="hidden md:flex flex-col w-full md:w-64 bg-white dark:bg-slate-900 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 flex-shrink-0 md:min-h-screen z-20">
+    <div class="p-5 border-b border-slate-200 dark:border-slate-800 hidden md:flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+        <i data-lucide="trophy" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-slate-900 dark:text-white text-base leading-tight">Badminton Club</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">DB Schema Aligned</p>
+      </div>
+    </div>
+
+    <nav class="flex-1 p-3 space-y-1">
+      <button type="button" onclick="switchModule('matrix')" id="nav-matrix" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium bg-indigo-600 text-white shadow-sm">
+        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+        <span>Overview 总账总览</span>
+      </button>
+      <button type="button" onclick="switchModule('sessions')" id="nav-sessions" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+        <span>Sessions 场次点名</span>
+      </button>
+      <button type="button" onclick="switchModule('payments')" id="nav-payments" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <i data-lucide="wallet" class="w-4 h-4"></i>
+        <span>Payments 收款核销</span>
+      </button>
+      <button type="button" onclick="switchModule('members')" id="nav-members" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <i data-lucide="users" class="w-4 h-4"></i>
+        <span>Members 成员账本</span>
+      </button>
+    </nav>
+
+    <div class="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+      <div>
+        <div class="text-[11px] font-semibold uppercase text-slate-400 mb-1.5">Theme 主题外观</div>
+        <div class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
+          <button type="button" onclick="setTheme('light')" id="theme-btn-light" class="theme-btn py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1"><i data-lucide="sun" class="w-3.5 h-3.5"></i>Light</button>
+          <button type="button" onclick="setTheme('dark')" id="theme-btn-dark" class="theme-btn py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1"><i data-lucide="moon" class="w-3.5 h-3.5"></i>Dark</button>
+          <button type="button" onclick="setTheme('system')" id="theme-btn-system" class="theme-btn py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1"><i data-lucide="monitor" class="w-3.5 h-3.5"></i>System</button>
+        </div>
+      </div>
+      <button type="button" onclick="resetDemoData()" class="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-medium flex items-center justify-center gap-1.5">
+        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+        <span>Reset DB 重置演示数据</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+
+    <!-- ==================== 1. OVERVIEW & MATRIX ==================== -->
+    <section id="module-matrix" class="module-section space-y-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="layout-grid" class="w-6 h-6 text-indigo-600 dark:text-indigo-400"></i>
+          <span>Overview & Balance Matrix 总账与欠款总览</span>
+        </h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">红字 (+) 代表欠俱乐部款项，绿字 (-) 代表预存余额 (Prepaid Credit)。</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1.5">1. Member Status 成员状态过滤</label>
+          <select id="matrix-member-filter" onchange="renderMatrix()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm">
+            <option value="all">All Members (全部成员)</option>
+            <option value="unpaid">Unpaid Only (只看欠款 > 0)</option>
+            <option value="prepaid">Prepaid Credit Only (只看有余额 < 0)</option>
+            <option value="hide_settled">Hide Settled (隐藏已结清)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1.5">2. Session Columns 场次列显示</label>
+          <select id="matrix-session-filter" onchange="renderMatrix()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm">
+            <option value="unpaid">Unpaid Sessions Only (只看未付场次)</option>
+            <option value="all">Show All Past Sessions (显示全部历史)</option>
+          </select>
+        </div>
+        <div class="md:col-span-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">3. Filter by Date 筛选打球日期 (不选显示全部):</span>
+            <button type="button" onclick="clearMatrixDateFilter()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">Clear 清空</button>
+          </div>
+          <div id="matrix-date-pills" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+
+      <div id="matrix-kpis" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead id="matrix-thead"></thead>
+            <tbody id="matrix-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. SESSIONS & ATTENDANCE ==================== -->
+    <section id="module-sessions" class="module-section hidden space-y-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="calendar-plus" class="w-6 h-6 text-indigo-600 dark:text-indigo-400"></i>
+          <span>Sessions & Attendance 场次算账与点名</span>
+        </h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">录入场地与球费 → 勾选出席人数（自动向上进位至 RM 0.10）→ 生成 WhatsApp 催款文案</p>
+      </div>
+
+      <div class="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button type="button" onclick="switchSubTab('sessions', 'cost')" id="subtab-sessions-cost" class="subtab-sessions px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white">1. Session Cost 录入成本</button>
+        <button type="button" onclick="switchSubTab('sessions', 'assign')" id="subtab-sessions-assign" class="subtab-sessions px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">2. Attendance 点名发群</button>
+        <button type="button" onclick="switchSubTab('sessions', 'history')" id="subtab-sessions-history" class="subtab-sessions px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">3. History 历史明细</button>
+        <button type="button" onclick="switchSubTab('sessions', 'edit')" id="subtab-sessions-edit" class="subtab-sessions px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">4. Edit / Delete 修改删除</button>
+      </div>
+
+      <!-- Sub 1: Session Cost -->
+      <div id="panel-sessions-cost" class="panel-sessions bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold mb-1.5">date 打球日期</label>
+            <input type="date" id="cost-date" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1.5">location 打球场馆</label>
+            <div class="flex gap-2">
+              <select id="cost-loc-select" onchange="handleLocSelectChange()" class="w-1/2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm">
+                <option value="__new__">+ New 新地点</option>
+              </select>
+              <input type="text" id="cost-loc-input" placeholder="e.g. MBSJ PUTRA PERMAI" class="w-1/2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm" />
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold">Court Fee 场地费用 (`court_cost`)</h3>
+            <label class="inline-flex items-center gap-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 cursor-pointer">
+              <input type="checkbox" id="toggle-court-b" onchange="toggleExtraCourt()" class="rounded" />
+              <span>Add Extra Court B (加场费用)</span>
+            </label>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">court_price_a 单价 (RM)</label>
+              <input type="number" step="any" min="0" id="court-pa" oninput="recalcSessionCost()" placeholder="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">court_qty_a 数量/小时</label>
+              <input type="number" step="1" min="0" id="court-qa" oninput="recalcSessionCost()" value="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div id="court-b-row" class="hidden grid grid-cols-2 gap-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">court_price_b 单价 (RM)</label>
+              <input type="number" step="any" min="0" id="court-pb" oninput="recalcSessionCost()" placeholder="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">court_qty_b 数量/小时</label>
+              <input type="number" step="1" min="0" id="court-qb" oninput="recalcSessionCost()" value="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
+          <h3 class="font-bold">Shuttlecock Fee 羽球费用 (`shuttle_cost`)</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">shuttle_price_a 单价</label>
+              <input type="number" step="any" min="0" id="shuttle-pa" oninput="recalcSessionCost()" placeholder="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">shuttle_qty_a 数量</label>
+              <input type="number" step="1" min="0" id="shuttle-qa" oninput="recalcSessionCost()" value="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">shuttle_price_b 单价</label>
+              <input type="number" step="any" min="0" id="shuttle-pb" oninput="recalcSessionCost()" placeholder="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">shuttle_qty_b 数量</label>
+              <input type="number" step="1" min="0" id="shuttle-qb" oninput="recalcSessionCost()" value="0" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900">
+          <div class="space-y-1.5">
+            <div class="text-sm">Subtotal 计算小计: <span id="calc-raw-total" class="font-bold">RM 0.00</span></div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500">adj_amount 手动微调 (+/- RM):</span>
+              <input type="number" step="any" id="cost-adj" oninput="recalcSessionCost()" value="0" class="w-24 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-sm" />
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold uppercase">total_cost 最终总成本</div>
+            <div id="calc-final-total" class="text-3xl font-extrabold text-indigo-700 dark:text-indigo-400">RM 0.00</div>
+          </div>
+        </div>
+
+        <button type="button" onclick="saveNewSession()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl shadow-sm transition">
+          Save Session Cost 保存并进入点名 →
+        </button>
+      </div>
+
+      <!-- Sub 2: Attendance & WhatsApp -->
+      <div id="panel-sessions-assign" class="panel-sessions hidden bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Select Session 选择要分配名单的场次:</label>
+          <select id="assign-session-select" onchange="renderAssignChecklist()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm"></select>
+        </div>
+
+        <div id="assign-session-banner" class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4"></div>
+
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 class="font-bold">Tick Attendees 勾选出席成员</h3>
+            <div id="assign-live-calc" class="text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/15 px-3 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/30"></div>
+          </div>
+          <div id="assign-members-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+        </div>
+
+        <button type="button" onclick="saveAttendanceAndGenerate()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl shadow-sm transition">
+          Save Attendance & Generate WhatsApp 保存名单并生成文案
+        </button>
+
+        <div id="whatsapp-box" class="hidden pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold">WhatsApp Collection Message 群发催款模板</h3>
+            <button type="button" onclick="copyWhatsAppText()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg">Copy 一键复制</button>
+          </div>
+          <textarea id="whatsapp-textarea" rows="10" readonly class="w-full rounded-xl bg-slate-900 border border-slate-800 text-emerald-300 font-mono text-sm p-4"></textarea>
+        </div>
+      </div>
+
+      <!-- Sub 3: History -->
+      <div id="panel-sessions-history" class="panel-sessions hidden bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-3">date</th>
+                <th class="px-4 py-3">location</th>
+                <th class="px-4 py-3">court_cost</th>
+                <th class="px-4 py-3">shuttle_a_cost</th>
+                <th class="px-4 py-3">shuttle_b_cost</th>
+                <th class="px-4 py-3">shuttle_cost</th>
+                <th class="px-4 py-3">adj_amount</th>
+                <th class="px-4 py-3">total_cost</th>
+                <th class="px-4 py-3">cost_per_person</th>
+                <th class="px-4 py-3">Players</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-history-tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sub 4: Edit / Delete -->
+      <div id="panel-sessions-edit" class="panel-sessions hidden bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Select Session 选择要修改或删除的场次:</label>
+          <select id="edit-session-select" onchange="populateEditSessionForm()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm"></select>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">date 日期</label>
+            <input type="date" id="edit-s-date" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">location 地点</label>
+            <input type="text" id="edit-s-loc" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">total_cost 最终总成本 (RM)</label>
+            <input type="number" step="any" min="0" id="edit-s-total" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <button type="button" onclick="updateSessionRecord()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm">Save Changes 保存修改并重算</button>
+          <button type="button" onclick="deleteSessionRecord()" class="bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 font-semibold px-5 py-2.5 rounded-xl text-sm">Delete Session 删除场次</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. PAYMENTS & SETTLEMENT ==================== -->
+    <section id="module-payments" class="module-section hidden space-y-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="wallet" class="w-6 h-6 text-indigo-600 dark:text-indigo-400"></i>
+          <span>Payments & Settlement 收款核销与调账</span>
+        </h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">勾选已付款人员 (`is_paid = 1`)；多付金额自动写入 `payments` 表转入个人预存余额。</p>
+      </div>
+
+      <div class="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button type="button" onclick="switchSubTab('payments', 'bysession')" id="subtab-payments-bysession" class="subtab-payments px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white">By Session 按场次核销</button>
+        <button type="button" onclick="switchSubTab('payments', 'bymember')" id="subtab-payments-bymember" class="subtab-payments px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">By Member 按成员结账</button>
+        <button type="button" onclick="switchSubTab('payments', 'adjust')" id="subtab-payments-adjust" class="subtab-payments px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">Manual Adjust 手动调账</button>
+        <button type="button" onclick="switchSubTab('payments', 'logs')" id="subtab-payments-logs" class="subtab-payments px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">Logs 流水记录</button>
+      </div>
+
+      <!-- Sub 1: By Session -->
+      <div id="panel-payments-bysession" class="panel-payments bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Select Session 选择要核销收款的场次:</label>
+          <select id="pay-session-select" onchange="renderPayBySessionList()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm"></select>
+        </div>
+        <div id="pay-bysession-list" class="space-y-2.5"></div>
+        <button type="button" id="btn-save-pay-session" onclick="savePayBySession()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl text-sm shadow-sm">
+          Save Payments 保存收款状态 (多付自动转余额)
+        </button>
+      </div>
+
+      <!-- Sub 2: By Member -->
+      <div id="panel-payments-bymember" class="panel-payments hidden bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
+        <div>
+          <label class="block text-sm font-semibold mb-1.5">Select Member 选择成员一对一结账:</label>
+          <select id="pay-member-select" onchange="renderPayByMemberView()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm"></select>
+        </div>
+        <div id="pay-member-kpis" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+        <div class="space-y-2">
+          <h3 class="font-bold text-sm">Unpaid Sessions 勾选要结清的未付场次:</h3>
+          <div id="pay-member-unpaid-list" class="space-y-2"></div>
+        </div>
+        <div id="pay-member-checkout-box" class="hidden p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1.5">
+            <div class="text-sm">Selected Subtotal 勾选小计: <span id="tbm-selected-sum" class="font-bold">RM 0.00</span></div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-semibold">Actual Received 实收转账 (RM):</label>
+              <input type="number" step="any" min="0" id="tbm-actual-received" class="w-32 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-bold text-indigo-600" />
+            </div>
+          </div>
+          <button type="button" onclick="confirmMemberCheckout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl text-sm shadow-sm">
+            Confirm Settlement 确认结账核销
+          </button>
+        </div>
+      </div>
+
+      <!-- Sub 3: Manual Adjust -->
+      <div id="panel-payments-adjust" class="panel-payments hidden bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
+        <div class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs text-amber-800 dark:text-amber-300">
+          <strong>说明：</strong> 输入 <strong>正数 (如 50)</strong> 代表预充值/余额；输入 <strong>负数 (如 -15)</strong> 代表补录旧欠款。
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">member_id 选择成员</label>
+            <select id="adj-member-select" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">amount 调整金额 (RM)</label>
+            <input type="number" step="any" id="adj-amount" placeholder="e.g. 50 or -15" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">date 日期</label>
+            <input type="date" id="adj-date" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">remarks 备注</label>
+            <input type="text" id="adj-remarks" value="Manual Adjustment" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm" />
+          </div>
+        </div>
+        <button type="button" onclick="applyManualAdjustment()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-xl text-sm">Submit 提交调账记录</button>
+      </div>
+
+      <!-- Sub 4: Logs -->
+      <div id="panel-payments-logs" class="panel-payments hidden bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-3">date</th>
+                <th class="px-4 py-3">member_id (name)</th>
+                <th class="px-4 py-3">amount</th>
+                <th class="px-4 py-3">remarks</th>
+                <th class="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="payments-logs-tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4. MEMBERS & LEDGER ==================== -->
+    <section id="module-members" class="module-section hidden space-y-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="users" class="w-6 h-6 text-indigo-600 dark:text-indigo-400"></i>
+          <span>Members & Personal Ledger 成员与个人账本</span>
+        </h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">支持最多选择 2 位成员并排对比消费明细与已付/未付状态。</p>
+      </div>
+
+      <div class="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button type="button" onclick="switchSubTab('members', 'ledger')" id="subtab-members-ledger" class="subtab-members px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white">Personal Ledger 个人账本对比</button>
+        <button type="button" onclick="switchSubTab('members', 'manage')" id="subtab-members-manage" class="subtab-members px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">Add / Edit 新增编辑成员</button>
+      </div>
+
+      <!-- Sub 1: Ledger -->
+      <div id="panel-members-ledger" class="panel-members space-y-5">
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1.5">Member A 查看成员 A:</label>
+            <select id="ledger-member-1" onchange="renderPersonalLedgers()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1.5">Member B 对比成员 B (可选):</label>
+            <select id="ledger-member-2" onchange="renderPersonalLedgers()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"></select>
+          </div>
+        </div>
+        <div id="ledger-comparison-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+      </div>
+
+      <!-- Sub 2: Manage -->
+      <div id="panel-members-manage" class="panel-members hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+          <h3 class="font-bold text-lg">Add New Member 新增成员</h3>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">name 姓名 (UNIQUE) *</label>
+            <input type="text" id="new-m-name" placeholder="e.g. Alex Tan or Alex (Friend)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm" />
+            <p class="text-[11px] text-slate-400 mt-1">必须包含字母或汉字；自动忽略大小写查重，禁止纯数字或乱码符号。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">contact_number 联系电话</label>
+            <input type="text" id="new-m-contact" placeholder="e.g. 012-3456789" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">invited_by_id 推荐人</label>
+            <select id="new-m-invited" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"></select>
+          </div>
+          <button type="button" onclick="addNewMember()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm">Add Member 确认添加</button>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+          <h3 class="font-bold text-lg">Edit / Delete 编辑或删除成员</h3>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Select Member 选择成员</label>
+            <select id="edit-m-select" onchange="populateEditMemberForm()" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">name 修改姓名 *</label>
+            <input type="text" id="edit-m-name" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">contact_number 修改电话</label>
+            <input type="text" id="edit-m-contact" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm" />
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button type="button" onclick="updateMemberInfo()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm">Save 保存修改</button>
+            <button type="button" onclick="deleteMemberRecord()" class="bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 font-semibold px-4 py-2.5 rounded-xl text-sm">Delete 删除</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // 1. Exact SQLite / Supabase Schema Aligned Store & Real Club Seed Data
+    var STORAGE_KEY = 'badminton_club_aligned_v1';
+    var DEFAULT_DEMO_DATA = {
+      members: [
+        { id: 1, name: 'Caleb', invited_by_id: null, first_name: 'Caleb', last_name: '', contact_number: '011-11110941' },
+        { id: 2, name: 'Zheng Cheng', invited_by_id: 1, first_name: 'Zheng', last_name: 'Cheng', contact_number: '' },
+        { id: 3, name: 'Clement Jun Xian', invited_by_id: 1, first_name: 'Clement', last_name: 'Jun Xian', contact_number: '' },
+        { id: 4, name: 'Yu Hang', invited_by_id: 1, first_name: 'Yu', last_name: 'Hang', contact_number: '' },
+        { id: 5, name: 'Gui Ting', invited_by_id: 1, first_name: 'Gui', last_name: 'Ting', contact_number: '' },
+        { id: 6, name: 'Guiting Brother', invited_by_id: 5, first_name: 'Guiting', last_name: 'Brother', contact_number: '' },
+        { id: 7, name: 'Winnie Tan', invited_by_id: 1, first_name: 'Winnie', last_name: 'Tan', contact_number: '' },
+        { id: 8, name: 'Zi Sin', invited_by_id: 1, first_name: 'Zi', last_name: 'Sin', contact_number: '' },
+        { id: 9, name: 'Xin Hui', invited_by_id: 1, first_name: 'Xin', last_name: 'Hui', contact_number: '' },
+        { id: 10, name: 'Jia Yi', invited_by_id: 1, first_name: 'Jia', last_name: 'Yi', contact_number: '' },
+        { id: 11, name: 'Hins', invited_by_id: 1, first_name: 'Hins', last_name: '', contact_number: '' },
+        { id: 12, name: 'Axel', invited_by_id: 1, first_name: 'Axel', last_name: '', contact_number: '' }
+      ],
+      sessions: [
+        {
+          id: 1, date: '2026-10-26', location: 'MBSJ PUTRA PERMAI',
+          court_price_a: 26, court_qty_a: 2, court_price_b: 0, court_qty_b: 0, court_cost: 52,
+          shuttle_price_a: 9.5, shuttle_qty_a: 4, shuttle_a_cost: 38,
+          shuttle_price_b: 0, shuttle_qty_b: 0, shuttle_b_cost: 0,
+          shuttle_cost: 38, adj_amount: 0, total_cost: 90, cost_per_person: 15.00
+        },
+        {
+          id: 2, date: '2026-11-02', location: 'MBSJ PUTRA PERMAI',
+          court_price_a: 26, court_qty_a: 2, court_price_b: 0, court_qty_b: 0, court_cost: 52,
+          shuttle_price_a: 9.5, shuttle_qty_a: 5, shuttle_a_cost: 47.5,
+          shuttle_price_b: 0, shuttle_qty_b: 0, shuttle_b_cost: 0,
+          shuttle_cost: 47.5, adj_amount: 0.5, total_cost: 100, cost_per_person: 12.50
+        },
+        {
+          id: 3, date: '2026-11-09', location: 'Stadium Serdang Jaya MPSJ',
+          court_price_a: 28, court_qty_a: 2, court_price_b: 20, court_qty_b: 1, court_cost: 76,
+          shuttle_price_a: 9.5, shuttle_qty_a: 4, shuttle_a_cost: 38,
+          shuttle_price_b: 8.0, shuttle_qty_b: 1, shuttle_b_cost: 8,
+          shuttle_cost: 46, adj_amount: -2, total_cost: 120, cost_per_person: 15.00
+        }
+      ],
+      attendance: [
+        // 2026-10-26 (6 players @ RM 15.00)
+        { session_id: 1, member_id: 1, is_paid: 1 }, { session_id: 1, member_id: 2, is_paid: 1 },
+        { session_id: 1, member_id: 3, is_paid: 1 }, { session_id: 1, member_id: 4, is_paid: 0 },
+        { session_id: 1, member_id: 5, is_paid: 1 }, { session_id: 1, member_id: 6, is_paid: 1 },
+        // 2026-11-02 (8 players @ RM 12.50)
+        { session_id: 2, member_id: 1, is_paid: 1 }, { session_id: 2, member_id: 2, is_paid: 0 },
+        { session_id: 2, member_id: 3, is_paid: 0 }, { session_id: 2, member_id: 4, is_paid: 0 },
+        { session_id: 2, member_id: 5, is_paid: 1 }, { session_id: 2, member_id: 7, is_paid: 1 },
+        { session_id: 2, member_id: 8, is_paid: 0 }, { session_id: 2, member_id: 9, is_paid: 1 },
+        // 2026-11-09 (8 players @ RM 15.00)
+        { session_id: 3, member_id: 1, is_paid: 1 }, { session_id: 3, member_id: 2, is_paid: 0 },
+        { session_id: 3, member_id: 3, is_paid: 1 }, { session_id: 3, member_id: 5, is_paid: 1 },
+        { session_id: 3, member_id: 6, is_paid: 0 }, { session_id: 3, member_id: 10, is_paid: 0 },
+        { session_id: 3, member_id: 11, is_paid: 1 }, { session_id: 3, member_id: 12, is_paid: 0 }
+      ],
+      payments: [
+        { id: 1, member_id: 5, date: '2026-11-05', amount: 30.00, remarks: 'Prepaid Credit Top-up' },
+        { id: 2, member_id: 7, date: '2026-11-16', amount: 2.50, remarks: 'Payment diff after clearing sessions' },
+        { id: 3, member_id: 4, date: '2026-08-24', amount: -10.00, remarks: 'Manual Adjustment' }
+      ]
+    };
+
+    var db = (function () {
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          var p = JSON.parse(raw);
+          if (p && Array.isArray(p.members) && p.members.length > 0) return p;
+        }
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_DEMO_DATA));
+    })();
+
+    var selectedMatrixDates = new Set();
+    var currentTheme = 'system';
+    try { currentTheme = localStorage.getItem('badminton_theme') || 'system'; } catch (e) {}
+
+    function saveDB() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) {}
+    }
+    saveDB();
+
+    function safeIcons() {
+      try { if (window.lucide && window.lucide.createIcons) window.lucide.createIcons(); } catch (e) {}
+    }
+
+    function esc(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
+    }
+
+    // Case-insensitive & whitespace normalized string key for conflict-free matching
+    function normKey(str) {
+      return String(str == null ? '' : str).trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    function parseFirstLast(fullName) {
+      var parts = String(fullName || '').trim().split(/\s+/);
+      return {
+        first_name: parts[0] || '',
+        last_name: parts.slice(1).join(' ')
+      };
+    }
+
+    function showToast(msg) {
+      var el = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      el.classList.remove('hidden');
+      safeIcons();
+      setTimeout(function () { el.classList.add('hidden'); }, 2600);
+    }
+
+    // 2. Theme & Navigation
+    function setTheme(mode) {
+      currentTheme = mode;
+      try { localStorage.setItem('badminton_theme', mode); } catch (e) {}
+      var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', mode === 'dark' || (mode === 'system' && sysDark));
+
+      ['light', 'dark', 'system'].forEach(function (th) {
+        var btn = document.getElementById('theme-btn-' + th);
+        if (!btn) return;
+        btn.className = th === mode
+          ? 'theme-btn py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+          : 'theme-btn py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1 text-slate-500 dark:text-slate-400';
+      });
+      var mIcon = document.getElementById('mobile-theme-icon');
+      if (mIcon) mIcon.setAttribute('data-lucide', mode === 'light' ? 'sun' : (mode === 'dark' ? 'moon' : 'monitor'));
+      safeIcons();
+    }
+
+    function cycleTheme() {
+      var order = ['light', 'dark', 'system'];
+      setTheme(order[(order.indexOf(currentTheme) + 1) % 3]);
+    }
+
+    function toggleMobileMenu() {
+      var sb = document.getElementById('sidebar');
+      sb.classList.toggle('hidden');
+      sb.classList.toggle('flex');
+    }
+
+    function switchModule(name) {
+      document.querySelectorAll('.module-section').forEach(function (el) { el.classList.add('hidden'); });
+      var target = document.getElementById('module-' + name);
+      if (target) target.classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(function (btn) {
+        btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800';
+      });
+      var active = document.getElementById('nav-' + name);
+      if (active) {
+        active.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium bg-indigo-600 text-white shadow-sm';
+      }
+      if (window.innerWidth < 768) {
+        var sb = document.getElementById('sidebar');
+        sb.classList.add('hidden');
+        sb.classList.remove('flex');
+      }
+      refreshAllViews();
+    }
+
+    function switchSubTab(mod, tab) {
+      document.querySelectorAll('.panel-' + mod).forEach(function (p) { p.classList.add('hidden'); });
+      var panel = document.getElementById('panel-' + mod + '-' + tab);
+      if (panel) panel.classList.remove('hidden');
+
+      document.querySelectorAll('.subtab-' + mod).forEach(function (b) {
+        b.className = 'subtab-' + mod + ' px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800';
+      });
+      var active = document.getElementById('subtab-' + mod + '-' + tab);
+      if (active) active.className = 'subtab-' + mod + ' px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white';
+    }
+
+    function jumpToAssignSession(sId) {
+      switchModule('sessions');
+      switchSubTab('sessions', 'assign');
+      document.getElementById('assign-session-select').value = sId;
+      renderAssignChecklist();
+    }
+
+    function resetDemoData() {
+      if (!confirm('Reset to initial club demo data? 确定恢复初始演示数据吗？')) return;
+      db = JSON.parse(JSON.stringify(DEFAULT_DEMO_DATA));
+      selectedMatrixDates.clear();
+      saveDB();
+      refreshAllViews();
+      showToast('Demo data restored 已恢复演示数据');
+    }
+
+    // 3. Calculation Engine
+    function roundUp10Cents(val) {
+      return Math.round(Math.ceil((val - 1e-9) * 10) / 10 * 100) / 100;
+    }
+
+    function getMemberBalances() {
+      return db.members.map(function (m) {
+        var mAtt = db.attendance.filter(function (a) { return Number(a.member_id) === Number(m.id); });
+        var unpaid = 0, paidSessions = 0;
+        mAtt.forEach(function (a) {
+          var s = db.sessions.find(function (x) { return Number(x.id) === Number(a.session_id); });
+          if (!s) return;
+          if (Number(a.is_paid) === 1) paidSessions += Number(s.cost_per_person);
+          else unpaid += Number(s.cost_per_person);
+        });
+        var mPays = db.payments.filter(function (p) { return Number(p.member_id) === Number(m.id); });
+        var adjDebt = mPays.filter(function (p) { return Number(p.amount) < 0; }).reduce(function (s, p) { return s + Math.abs(Number(p.amount)); }, 0);
+        var manualPaid = mPays.filter(function (p) { return Number(p.amount) > 0; }).reduce(function (s, p) { return s + Number(p.amount); }, 0);
+        var totalExp = unpaid + paidSessions + adjDebt;
+        var paid = paidSessions + manualPaid;
+        return {
+          id: m.id, name: m.name, contact_number: m.contact_number, invited_by_id: m.invited_by_id,
+          adj_debt: Math.round(adjDebt * 100) / 100,
+          paid: Math.round(paid * 100) / 100,
+          total_expenses: Math.round(totalExp * 100) / 100,
+          Total_Balance: Math.round((totalExp - paid) * 100) / 100,
+          total_sessions: mAtt.length
+        };
+      });
+    }
+
+    // 4. Matrix Rendering
+    function clearMatrixDateFilter() { selectedMatrixDates.clear(); renderMatrix(); }
+    function toggleMatrixDatePill(d) {
+      if (selectedMatrixDates.has(d)) selectedMatrixDates.delete(d); else selectedMatrixDates.add(d);
+      renderMatrix();
+    }
+
+    function renderMatrix() {
+      var memFilter = document.getElementById('matrix-member-filter').value;
+      var sessFilter = document.getElementById('matrix-session-filter').value;
+      var balances = getMemberBalances();
+
+      var totalOwed = balances.filter(function (b) { return b.Total_Balance > 0.001; }).reduce(function (s, b) { return s + b.Total_Balance; }, 0);
+      var totalCredit = balances.filter(function (b) { return b.Total_Balance < -0.001; }).reduce(function (s, b) { return s + Math.abs(b.Total_Balance); }, 0);
+      var unpaidCount = balances.filter(function (b) { return b.Total_Balance > 0.001; }).length;
+
+      document.getElementById('matrix-kpis').innerHTML =
+        '<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"><div class="text-xs text-slate-500">Total Members 总人数</div><div class="text-2xl font-bold mt-1">' + balances.length + ' 人</div></div>' +
+        '<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"><div class="text-xs text-slate-500">Total Owed 待收欠款</div><div class="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">RM ' + totalOwed.toFixed(2) + '</div></div>' +
+        '<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"><div class="text-xs text-slate-500">Prepaid Credit 预存总额</div><div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">RM ' + totalCredit.toFixed(2) + '</div></div>' +
+        '<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"><div class="text-xs text-slate-500">Unpaid Unsettled 未结清</div><div class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">' + unpaidCount + ' 人</div></div>';
+
+      var dateSet = new Set();
+      db.attendance.forEach(function (a) {
+        if (sessFilter === 'unpaid' && Number(a.is_paid) === 1) return;
+        var s = db.sessions.find(function (x) { return Number(x.id) === Number(a.session_id); });
+        if (s && s.date) dateSet.add(s.date);
+      });
+      var allDates = Array.from(dateSet).sort().reverse();
+
+      document.getElementById('matrix-date-pills').innerHTML = allDates.map(function (d) {
+        var active = selectedMatrixDates.has(d);
+        return '<button type="button" onclick="toggleMatrixDatePill(\'' + d + '\')" class="px-3 py-1 rounded-full text-xs font-medium border ' +
+          (active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700') + '">' + d + '</button>';
+      }).join('') || '<span class="text-xs text-slate-400">暂无场次日期</span>';
+
+      var displayDates = selectedMatrixDates.size > 0 ? allDates.filter(function (d) { return selectedMatrixDates.has(d); }) : allDates;
+
+      var list = balances.filter(function (m) {
+        if (memFilter === 'unpaid') return m.Total_Balance > 0.001;
+        if (memFilter === 'prepaid') return m.Total_Balance < -0.001;
+        if (memFilter === 'hide_settled') return Math.abs(m.Total_Balance) > 0.001;
+        return true;
+      }).sort(function (a, b) { return b.Total_Balance - a.Total_Balance; });
+
+      document.getElementById('matrix-thead').innerHTML =
+        '<tr class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs uppercase">' +
+          '<th class="px-4 py-3 text-center w-12">No.</th><th class="px-4 py-3">name 成员</th>' +
+          displayDates.map(function (d) { return '<th class="px-4 py-3 text-center whitespace-nowrap">' + d + '</th>'; }).join('') +
+          '<th class="px-4 py-3 text-center font-bold bg-slate-200/70 dark:bg-slate-800">Total (RM)</th>' +
+        '</tr>';
+
+      document.getElementById('matrix-tbody').innerHTML = list.map(function (m, i) {
+        var cells = displayDates.map(function (d) {
+          var sum = 0;
+          db.attendance.forEach(function (a) {
+            if (Number(a.member_id) !== Number(m.id) || (sessFilter === 'unpaid' && Number(a.is_paid) === 1)) return;
+            var s = db.sessions.find(function (x) { return Number(x.id) === Number(a.session_id); });
+            if (s && s.date === d) sum += Number(s.cost_per_person);
+          });
+          return '<td class="px-4 py-3 text-center border-b border-slate-100 dark:border-slate-800">' + (sum > 0 ? sum.toFixed(2) : '<span class="text-slate-300 dark:text-slate-600">-</span>') + '</td>';
+        }).join('');
+
+        var badge = '<span class="text-slate-400">0.00</span>';
+        if (m.Total_Balance > 0.001) badge = '<span class="px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold">+' + m.Total_Balance.toFixed(2) + '</span>';
+        else if (m.Total_Balance < -0.001) badge = '<span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">' + m.Total_Balance.toFixed(2) + '</span>';
+
+        return '<tr class="odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-800/35">' +
+          '<td class="px-4 py-3 text-center text-slate-500 border-b border-slate-100 dark:border-slate-800">' + (i + 1) + '</td>' +
+          '<td class="px-4 py-3 font-semibold border-b border-slate-100 dark:border-slate-800">' + esc(m.name) + '</td>' +
+          cells +
+          '<td class="px-4 py-3 text-center border-b border-slate-100 dark:border-slate-800">' + badge + '</td>' +
+        '</tr>';
+      }).join('') || '<tr><td colspan="10" class="px-6 py-8 text-center text-slate-400">暂无匹配记录</td></tr>';
+    }
+
+    // 5. Sessions & WhatsApp (Strictly aligned with `sessions` table columns)
+    function populateLocations() {
+      var seen = new Map();
+      db.sessions.forEach(function (s) {
+        var raw = (s.location || '').trim();
+        if (!raw) return;
+        var key = normKey(raw);
+        if (!seen.has(key)) seen.set(key, raw);
+      });
+      var locs = Array.from(seen.values()).sort();
+      var sel = document.getElementById('cost-loc-select');
+      sel.innerHTML = '<option value="__new__">+ New 新地点</option>' + locs.map(function (l) { return '<option value="' + esc(l) + '">' + esc(l) + '</option>'; }).join('');
+    }
+    function handleLocSelectChange() {
+      var v = document.getElementById('cost-loc-select').value;
+      var inp = document.getElementById('cost-loc-input');
+      inp.value = v === '__new__' ? '' : v;
+    }
+    function toggleExtraCourt() {
+      document.getElementById('court-b-row').classList.toggle('hidden', !document.getElementById('toggle-court-b').checked);
+      recalcSessionCost();
+    }
+    function recalcSessionCost() {
+      var cPa = parseFloat(document.getElementById('court-pa').value) || 0;
+      var cQa = parseInt(document.getElementById('court-qa').value, 10) || 0;
+      var hasB = document.getElementById('toggle-court-b').checked;
+      var cPb = hasB ? (parseFloat(document.getElementById('court-pb').value) || 0) : 0;
+      var cQb = hasB ? (parseInt(document.getElementById('court-qb').value, 10) || 0) : 0;
+      var sPa = parseFloat(document.getElementById('shuttle-pa').value) || 0;
+      var sQa = parseInt(document.getElementById('shuttle-qa').value, 10) || 0;
+      var sPb = parseFloat(document.getElementById('shuttle-pb').value) || 0;
+      var sQb = parseInt(document.getElementById('shuttle-qb').value, 10) || 0;
+      var adj = parseFloat(document.getElementById('cost-adj').value) || 0;
+
+      var raw = (cPa * cQa) + (cPb * cQb) + (sPa * sQa) + (sPb * sQb);
+      document.getElementById('calc-raw-total').textContent = 'RM ' + raw.toFixed(2);
+      document.getElementById('calc-final-total').textContent = 'RM ' + (raw + adj).toFixed(2);
+    }
+
+    function saveNewSession() {
+      var date = document.getElementById('cost-date').value;
+      var rawLoc = document.getElementById('cost-loc-input').value.trim();
+      if (!date) return showToast('请选择打球日期 (date)');
+
+      // Match existing venue casing if already exists in DB to avoid case conflicts
+      var matchedLoc = rawLoc;
+      if (rawLoc) {
+        var existingSess = db.sessions.find(function (s) { return normKey(s.location) === normKey(rawLoc); });
+        if (existingSess && existingSess.location) matchedLoc = existingSess.location.trim();
+      }
+
+      var cPa = parseFloat(document.getElementById('court-pa').value) || 0;
+      var cQa = parseInt(document.getElementById('court-qa').value, 10) || 0;
+      var hasB = document.getElementById('toggle-court-b').checked;
+      var cPb = hasB ? (parseFloat(document.getElementById('court-pb').value) || 0) : 0;
+      var cQb = hasB ? (parseInt(document.getElementById('court-qb').value, 10) || 0) : 0;
+
+      var sPa = parseFloat(document.getElementById('shuttle-pa').value) || 0;
+      var sQa = parseInt(document.getElementById('shuttle-qa').value, 10) || 0;
+      var sPb = parseFloat(document.getElementById('shuttle-pb').value) || 0;
+      var sQb = parseInt(document.getElementById('shuttle-qb').value, 10) || 0;
+
+      var adj = parseFloat(document.getElementById('cost-adj').value) || 0;
+      var courtCost = Math.round(((cPa * cQa) + (cPb * cQb)) * 100) / 100;
+      var shuttleACost = Math.round((sPa * sQa) * 100) / 100;
+      var shuttleBCost = Math.round((sPb * sQb) * 100) / 100;
+      var shuttleCost = Math.round((shuttleACost + shuttleBCost) * 100) / 100;
+      var total = Math.round((courtCost + shuttleCost + adj) * 100) / 100;
+
+      if (total <= 0) return showToast('总成本 (total_cost) 必须大于 RM 0');
+
+      var newId = db.sessions.length ? Math.max.apply(null, db.sessions.map(function (s) { return Number(s.id); })) + 1 : 1;
+      db.sessions.unshift({
+        id: newId,
+        date: date,
+        court_cost: courtCost,
+        shuttle_a_cost: shuttleACost,
+        shuttle_b_cost: shuttleBCost,
+        total_cost: total,
+        cost_per_person: 0,
+        location: matchedLoc,
+        shuttle_cost: shuttleCost,
+        court_price_a: cPa,
+        court_qty_a: cQa,
+        court_price_b: cPb,
+        court_qty_b: cQb,
+        shuttle_price_a: sPa,
+        shuttle_qty_a: sQa,
+        shuttle_price_b: sPb,
+        shuttle_qty_b: sQb,
+        adj_amount: adj
+      });
+      saveDB();
+      refreshAllViews();
+      document.getElementById('assign-session-select').value = newId;
+      switchSubTab('sessions', 'assign');
+      renderAssignChecklist();
+      showToast('场次已保存，请勾选出席成员');
+    }
+
+    function renderAssignDropdown() {
+      var sel = document.getElementById('assign-session-select');
+      var prev = sel.value;
+      var sorted = db.sessions.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+      sel.innerHTML = sorted.map(function (s) {
+        var cnt = db.attendance.filter(function (a) { return Number(a.session_id) === Number(s.id); }).length;
+        return '<option value="' + s.id + '">' + s.date + ' | RM ' + Number(s.total_cost).toFixed(2) + ' | ' + esc(s.location || 'N/A') + (cnt ? ' (' + cnt + '人)' : ' [未点名]') + '</option>';
+      }).join('');
+      if (prev && sorted.some(function (s) { return String(s.id) === String(prev); })) sel.value = prev;
+      renderAssignChecklist();
+    }
+
+    function renderAssignChecklist() {
+      var sId = Number(document.getElementById('assign-session-select').value);
+      var sess = db.sessions.find(function (s) { return Number(s.id) === sId; });
+      var banner = document.getElementById('assign-session-banner');
+      var grid = document.getElementById('assign-members-grid');
+      if (!sess) { banner.innerHTML = ''; grid.innerHTML = ''; return; }
+
+      banner.innerHTML = '<div>date: <strong>' + sess.date + '</strong></div><div>location: <strong>' + esc(sess.location || 'N/A') + '</strong></div><div>total_cost: <strong class="text-indigo-600 dark:text-indigo-400">RM ' + Number(sess.total_cost).toFixed(2) + '</strong></div>';
+      var attIds = new Set(db.attendance.filter(function (a) { return Number(a.session_id) === sId; }).map(function (a) { return Number(a.member_id); }));
+      grid.innerHTML = db.members.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (m) {
+        return '<label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 cursor-pointer">' +
+          '<input type="checkbox" value="' + m.id + '" onchange="updateAssignLiveCalc()" ' + (attIds.has(Number(m.id)) ? 'checked' : '') + ' class="assign-m-chk w-4 h-4 rounded text-indigo-600" />' +
+          '<span class="text-sm font-medium">' + esc(m.name) + '</span></label>';
+      }).join('');
+      updateAssignLiveCalc();
+      if (attIds.size > 0 && Number(sess.cost_per_person) > 0) buildWhatsApp(sess, Array.from(attIds));
+      else document.getElementById('whatsapp-box').classList.add('hidden');
+    }
+
+    function updateAssignLiveCalc() {
+      var sId = Number(document.getElementById('assign-session-select').value);
+      var sess = db.sessions.find(function (s) { return Number(s.id) === sId; });
+      if (!sess) return;
+      var cnt = document.querySelectorAll('.assign-m-chk:checked').length;
+      var cpp = cnt > 0 ? roundUp10Cents(Number(sess.total_cost) / cnt) : 0;
+      document.getElementById('assign-live-calc').textContent = '已选 ' + cnt + ' 人 · cost_per_person: RM ' + cpp.toFixed(2);
+    }
+
+    function saveAttendanceAndGenerate() {
+      var sId = Number(document.getElementById('assign-session-select').value);
+      var sess = db.sessions.find(function (s) { return Number(s.id) === sId; });
+      if (!sess) return;
+      var ids = Array.from(document.querySelectorAll('.assign-m-chk:checked')).map(function (el) { return Number(el.value); });
+      if (!ids.length) return showToast('请至少勾选 1 位成员');
+
+      sess.cost_per_person = roundUp10Cents(Number(sess.total_cost) / ids.length);
+      var paidMap = {};
+      db.attendance.filter(function (a) { return Number(a.session_id) === sId; }).forEach(function (a) { paidMap[a.member_id] = Number(a.is_paid); });
+      db.attendance = db.attendance.filter(function (a) { return Number(a.session_id) !== sId; });
+      ids.forEach(function (mId) { db.attendance.push({ session_id: sId, member_id: mId, is_paid: paidMap[mId] || 0 }); });
+
+      saveDB();
+      refreshAllViews();
+      buildWhatsApp(sess, ids);
+      showToast('名单已保存并生成 WhatsApp 文案');
+    }
+
+    function buildWhatsApp(sess, ids) {
+      var d = new Date(sess.date + 'T00:00:00');
+      var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      var dd = String(d.getDate()).padStart(2, '0'), mm = String(d.getMonth() + 1).padStart(2, '0');
+      var names = db.members.filter(function (m) { return ids.indexOf(Number(m.id)) !== -1; }).sort(function (a, b) { return a.name.localeCompare(b.name); })
+        .map(function (m, i) { return (i + 1) + '. ' + m.name; }).join('\n');
+      var loc = sess.location ? '📍 ' + sess.location + '\n' : '';
+      document.getElementById('whatsapp-textarea').value =
+        '💰Badminton 🏸 \nDate: ' + dd + '/' + mm + '/' + d.getFullYear() + ' (' + days[d.getDay()] + ')\n' + loc +
+        'RM' + Number(sess.cost_per_person).toFixed(2) + ' per person\nplease send me the screenshot personally after trf ah 🙏🏻\nTNG 011-11110941\n\n' + names;
+      document.getElementById('whatsapp-box').classList.remove('hidden');
+    }
+
+    function copyWhatsAppText() {
+      var ta = document.getElementById('whatsapp-textarea');
+      ta.select();
+      if (navigator.clipboard) navigator.clipboard.writeText(ta.value); else document.execCommand('copy');
+      showToast('已复制到剪贴板');
+    }
+
+    function renderSessionsHistory() {
+      var sorted = db.sessions.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+      document.getElementById('sessions-history-tbody').innerHTML = sorted.map(function (s) {
+        var cnt = db.attendance.filter(function (a) { return Number(a.session_id) === Number(s.id); }).length;
+        return '<tr>' +
+          '<td class="px-4 py-3 font-medium whitespace-nowrap">' + s.date + '</td>' +
+          '<td class="px-4 py-3">' + esc(s.location || '-') + '</td>' +
+          '<td class="px-4 py-3">RM ' + Number(s.court_cost || 0).toFixed(2) + '</td>' +
+          '<td class="px-4 py-3">RM ' + Number(s.shuttle_a_cost || 0).toFixed(2) + '</td>' +
+          '<td class="px-4 py-3">RM ' + Number(s.shuttle_b_cost || 0).toFixed(2) + '</td>' +
+          '<td class="px-4 py-3">RM ' + Number(s.shuttle_cost || 0).toFixed(2) + '</td>' +
+          '<td class="px-4 py-3">RM ' + Number(s.adj_amount || 0).toFixed(2) + '</td>' +
+          '<td class="px-4 py-3 font-bold">RM ' + Number(s.total_cost || 0).toFixed(2) + '</td>' +
+          '<td class="px-4 py-3 font-semibold text-indigo-600 dark:text-indigo-400">RM ' + Number(s.cost_per_person || 0).toFixed(2) + '</td>' +
+          '<td class="px-4 py-3">' + cnt + '</td>' +
+        '</tr>';
+      }).join('') || '<tr><td colspan="10" class="px-4 py-8 text-center text-slate-400">暂无场次记录</td></tr>';
+    }
+
+    function renderEditSessionDropdown() {
+      var sel = document.getElementById('edit-session-select');
+      var sorted = db.sessions.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+      sel.innerHTML = sorted.map(function (s) { return '<option value="' + s.id + '">' + s.date + ' | RM ' + Number(s.total_cost).toFixed(2) + ' | ' + esc(s.location || 'N/A') + '</option>'; }).join('');
+      populateEditSessionForm();
+    }
+    function populateEditSessionForm() {
+      var s = db.sessions.find(function (x) { return Number(x.id) === Number(document.getElementById('edit-session-select').value); });
+      if (!s) return;
+      document.getElementById('edit-s-date').value = s.date;
+      document.getElementById('edit-s-loc').value = s.location || '';
+      document.getElementById('edit-s-total').value = s.total_cost;
+    }
+    function updateSessionRecord() {
+      var s = db.sessions.find(function (x) { return Number(x.id) === Number(document.getElementById('edit-session-select').value); });
+      if (!s) return;
+      s.date = document.getElementById('edit-s-date').value;
+      s.location = document.getElementById('edit-s-loc').value.trim();
+      s.total_cost = parseFloat(document.getElementById('edit-s-total').value) || 0;
+      var cnt = db.attendance.filter(function (a) { return Number(a.session_id) === Number(s.id); }).length;
+      s.cost_per_person = cnt > 0 ? roundUp10Cents(s.total_cost / cnt) : 0;
+      saveDB(); refreshAllViews(); showToast('场次已更新并重算人均费用');
+    }
+    function deleteSessionRecord() {
+      var sId = Number(document.getElementById('edit-session-select').value);
+      if (!confirm('Delete this session? 确定删除该场次吗？')) return;
+      db.attendance = db.attendance.filter(function (a) { return Number(a.session_id) !== sId; });
+      db.sessions = db.sessions.filter(function (s) { return Number(s.id) !== sId; });
+      saveDB(); refreshAllViews(); showToast('场次已删除');
+    }
+
+    // 6. Payments (Strictly aligned with `attendance.is_paid` & `payments` table)
+    function renderPayBySessionDropdown() {
+      var sel = document.getElementById('pay-session-select');
+      var prev = sel.value;
+      var sorted = db.sessions.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+      sel.innerHTML = sorted.map(function (s) {
+        var cnt = db.attendance.filter(function (a) { return Number(a.session_id) === Number(s.id); }).length;
+        return '<option value="' + s.id + '">' + s.date + ' | ' + esc(s.location || 'N/A') + (cnt ? ' | RM ' + Number(s.cost_per_person).toFixed(2) + '/人' : ' [未点名]') + '</option>';
+      }).join('');
+      if (prev && sorted.some(function (s) { return String(s.id) === String(prev); })) sel.value = prev;
+      renderPayBySessionList();
+    }
+
+    function renderPayBySessionList() {
+      var sId = Number(document.getElementById('pay-session-select').value);
+      var sess = db.sessions.find(function (s) { return Number(s.id) === sId; });
+      var box = document.getElementById('pay-bysession-list');
+      var btn = document.getElementById('btn-save-pay-session');
+      if (!sess) { box.innerHTML = ''; return; }
+
+      var atts = db.attendance.filter(function (a) { return Number(a.session_id) === sId; });
+      if (!atts.length) {
+        btn.classList.add('hidden');
+        box.innerHTML = '<div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex items-center justify-between gap-3 text-sm text-amber-800 dark:text-amber-300">' +
+          '<span>该场次尚未点名出席成员，暂无可核销人员。</span>' +
+          '<button type="button" onclick="jumpToAssignSession(' + sId + ')" class="bg-indigo-600 text-white text-xs font-semibold px-3.5 py-2 rounded-lg">立即点名</button></div>';
+        return;
+      }
+      btn.classList.remove('hidden');
+      var cpp = Number(sess.cost_per_person);
+      box.innerHTML = atts.map(function (a) {
+        var m = db.members.find(function (x) { return Number(x.id) === Number(a.member_id); });
+        var paid = Number(a.is_paid) === 1;
+        return '<div class="flex items-center justify-between gap-4 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/50">' +
+          '<label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" data-mid="' + a.member_id + '" onchange="toggleSessionPayRow(this,' + cpp + ')" ' + (paid ? 'checked' : '') + ' class="pbs-chk w-4 h-4 rounded" />' +
+          '<span class="font-semibold text-sm">' + esc(m ? m.name : 'Unknown') + '</span>' +
+          '<span class="text-xs px-2 py-0.5 rounded-full ' + (paid ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300') + '">' + (paid ? 'is_paid=1 已付' : 'is_paid=0 未付') + '</span></label>' +
+          '<div class="flex items-center gap-2"><span class="text-xs text-slate-500">实收 RM:</span>' +
+          '<input type="number" step="any" min="0" data-mid="' + a.member_id + '" value="' + (paid ? cpp.toFixed(2) : '0') + '" class="pbs-amt w-24 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-sm font-semibold text-right" /></div></div>';
+      }).join('');
+    }
+
+    function toggleSessionPayRow(chk, cpp) {
+      var inp = document.querySelector('.pbs-amt[data-mid="' + chk.getAttribute('data-mid') + '"]');
+      if (inp) inp.value = chk.checked ? cpp.toFixed(2) : '0';
+    }
+
+    function savePayBySession() {
+      var sId = Number(document.getElementById('pay-session-select').value);
+      var sess = db.sessions.find(function (s) { return Number(s.id) === sId; });
+      if (!sess) return;
+      var cpp = Number(sess.cost_per_person);
+      document.querySelectorAll('.pbs-chk').forEach(function (chk) {
+        var mId = Number(chk.getAttribute('data-mid'));
+        var actual = parseFloat(document.querySelector('.pbs-amt[data-mid="' + mId + '"]').value) || 0;
+        var att = db.attendance.find(function (a) { return Number(a.session_id) === sId && Number(a.member_id) === mId; });
+        if (!att) return;
+        if (chk.checked || actual >= cpp - 0.001) {
+          att.is_paid = 1;
+          if (actual > cpp + 0.001) {
+            var nextId = db.payments.length ? Math.max.apply(null, db.payments.map(function (p) { return Number(p.id); })) + 1 : 1;
+            db.payments.push({ id: nextId, member_id: mId, date: sess.date, amount: Math.round((actual - cpp) * 100) / 100, remarks: 'Overpayment (' + sess.date + ')' });
+          }
+        } else {
+          att.is_paid = 0;
+        }
+      });
+      saveDB(); refreshAllViews(); showToast('本场收款状态已保存');
+    }
+
+    function renderPayByMemberDropdown() {
+      var sel = document.getElementById('pay-member-select');
+      var prev = sel.value;
+      var sorted = db.members.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+      sel.innerHTML = sorted.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+      if (prev && sorted.some(function (m) { return String(m.id) === String(prev); })) sel.value = prev;
+      renderPayByMemberView();
+    }
+
+    function renderPayByMemberView() {
+      var mId = Number(document.getElementById('pay-member-select').value);
+      var bal = getMemberBalances().find(function (b) { return Number(b.id) === mId; });
+      if (!bal) return;
+      document.getElementById('pay-member-kpis').innerHTML =
+        '<div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700"><div class="text-xs text-slate-500">累计场次</div><div class="text-lg font-bold">' + bal.total_sessions + '</div></div>' +
+        '<div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700"><div class="text-xs text-slate-500">累计消费</div><div class="text-lg font-bold">RM ' + bal.total_expenses.toFixed(2) + '</div></div>' +
+        '<div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700"><div class="text-xs text-slate-500">累计已付</div><div class="text-lg font-bold text-emerald-600">RM ' + bal.paid.toFixed(2) + '</div></div>' +
+        '<div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700"><div class="text-xs text-slate-500">当前净余额</div><div class="text-lg font-bold ' + (bal.Total_Balance > 0 ? 'text-rose-600' : 'text-emerald-600') + '">RM ' + bal.Total_Balance.toFixed(2) + '</div></div>';
+
+      var unpaid = db.attendance.filter(function (a) { return Number(a.member_id) === mId && Number(a.is_paid) === 0; });
+      var listEl = document.getElementById('pay-member-unpaid-list');
+      var box = document.getElementById('pay-member-checkout-box');
+      if (!unpaid.length) {
+        listEl.innerHTML = '<div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-sm">该成员目前没有任何未付场次。</div>';
+        box.classList.add('hidden');
+        return;
+      }
+      box.classList.remove('hidden');
+      listEl.innerHTML = unpaid.map(function (a) {
+        var s = db.sessions.find(function (x) { return Number(x.id) === Number(a.session_id); });
+        if (!s) return '';
+        return '<label class="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">' +
+          '<div class="flex items-center gap-3"><input type="checkbox" value="' + s.id + '" data-cost="' + s.cost_per_person + '" onchange="recalcTbmSelected()" checked class="tbm-chk w-4 h-4 rounded" />' +
+          '<span class="text-sm font-medium">' + s.date + ' · ' + esc(s.location || 'N/A') + '</span></div>' +
+          '<span class="font-bold text-rose-600 text-sm">RM ' + Number(s.cost_per_person).toFixed(2) + '</span></label>';
+      }).join('');
+      recalcTbmSelected();
+    }
+
+    function recalcTbmSelected() {
+      var sum = 0;
+      document.querySelectorAll('.tbm-chk:checked').forEach(function (c) { sum += parseFloat(c.getAttribute('data-cost')) || 0; });
+      sum = Math.round(sum * 100) / 100;
+      document.getElementById('tbm-selected-sum').textContent = 'RM ' + sum.toFixed(2);
+      document.getElementById('tbm-actual-received').value = sum.toFixed(2);
+    }
+
+    function confirmMemberCheckout() {
+      var mId = Number(document.getElementById('pay-member-select').value);
+      var chks = Array.from(document.querySelectorAll('.tbm-chk:checked'));
+      if (!chks.length) return showToast('请至少勾选 1 场记录');
+      var sum = 0;
+      chks.forEach(function (c) {
+        sum += parseFloat(c.getAttribute('data-cost')) || 0;
+        var att = db.attendance.find(function (a) { return Number(a.session_id) === Number(c.value) && Number(a.member_id) === mId; });
+        if (att) att.is_paid = 1;
+      });
+      var actual = parseFloat(document.getElementById('tbm-actual-received').value) || 0;
+      var diff = Math.round((actual - sum) * 100) / 100;
+      if (Math.abs(diff) > 0.001) {
+        var nextId = db.payments.length ? Math.max.apply(null, db.payments.map(function (p) { return Number(p.id); })) + 1 : 1;
+        db.payments.push({ id: nextId, member_id: mId, date: new Date().toISOString().split('T')[0], amount: diff, remarks: 'Payment diff after clearing ' + chks.length + ' sessions' });
+      }
+      saveDB(); refreshAllViews(); showToast('结账核销完成');
+    }
+
+    function applyManualAdjustment() {
+      var mId = Number(document.getElementById('adj-member-select').value);
+      var amt = parseFloat(document.getElementById('adj-amount').value);
+      var date = document.getElementById('adj-date').value;
+      var rem = document.getElementById('adj-remarks').value.trim() || 'Manual Adjustment';
+      if (isNaN(amt) || amt === 0 || !date) return showToast('请输入有效金额和日期');
+      var nextId = db.payments.length ? Math.max.apply(null, db.payments.map(function (p) { return Number(p.id); })) + 1 : 1;
+      db.payments.push({ id: nextId, member_id: mId, date: date, amount: amt, remarks: rem });
+      document.getElementById('adj-amount').value = '';
+      saveDB(); refreshAllViews(); showToast('调账记录已添加');
+    }
+
+    function renderPaymentLogs() {
+      var sorted = db.payments.slice().sort(function (a, b) { return Number(b.id) - Number(a.id); });
+      document.getElementById('payments-logs-tbody').innerHTML = sorted.map(function (p) {
+        var m = db.members.find(function (x) { return Number(x.id) === Number(p.member_id); });
+        var badge = Number(p.amount) >= 0 ? '<span class="text-emerald-600 font-bold">+RM ' + Number(p.amount).toFixed(2) + '</span>' : '<span class="text-rose-600 font-bold">-RM ' + Math.abs(Number(p.amount)).toFixed(2) + '</span>';
+        return '<tr><td class="px-4 py-3">' + p.date + '</td><td class="px-4 py-3 font-semibold">' + esc(m ? m.name : 'Unknown') + '</td>' +
+          '<td class="px-4 py-3">' + badge + '</td><td class="px-4 py-3 text-slate-500">' + esc(p.remarks) + '</td>' +
+          '<td class="px-4 py-3 text-right"><button type="button" onclick="deletePaymentLog(' + p.id + ')" class="text-xs text-rose-600 hover:underline">Delete 删除</button></td></tr>';
+      }).join('') || '<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">暂无流水记录</td></tr>';
+    }
+    function deletePaymentLog(id) {
+      if (!confirm('Delete this log? 确定删除该条流水吗？')) return;
+      db.payments = db.payments.filter(function (p) { return Number(p.id) !== Number(id); });
+      saveDB(); refreshAllViews(); showToast('流水已删除');
+    }
+
+    // 7. Members & Ledger (Strictly aligned with `members` table columns)
+    function renderLedgerSelectors() {
+      var sorted = db.members.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+      var s1 = document.getElementById('ledger-member-1'), s2 = document.getElementById('ledger-member-2');
+      var p1 = s1.value, p2 = s2.value;
+      s1.innerHTML = sorted.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+      s2.innerHTML = '<option value="">-- 不进行对比 --</option>' + sorted.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+      if (p1 && sorted.some(function (m) { return String(m.id) === String(p1); })) s1.value = p1;
+      if (p2 && sorted.some(function (m) { return String(m.id) === String(p2); })) s2.value = p2;
+      renderPersonalLedgers();
+    }
+
+    function renderPersonalLedgers() {
+      var id1 = Number(document.getElementById('ledger-member-1').value);
+      var id2 = Number(document.getElementById('ledger-member-2').value);
+      var targets = id2 && id2 !== id1 ? [id1, id2] : [id1];
+      var balances = getMemberBalances();
+
+      document.getElementById('ledger-comparison-grid').innerHTML = targets.map(function (id) {
+        var m = balances.find(function (b) { return Number(b.id) === id; });
+        if (!m) return '';
+        var inv = m.invited_by_id ? db.members.find(function (x) { return Number(x.id) === Number(m.invited_by_id); }) : null;
+        var atts = db.attendance.filter(function (a) { return Number(a.member_id) === id; })
+          .map(function (a) { return db.sessions.find(function (s) { return Number(s.id) === Number(a.session_id); }); })
+          .filter(Boolean).sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+        var credit = Math.round((m.paid - m.adj_debt) * 100) / 100;
+        var rows = atts.map(function (s) {
+          var cost = Number(s.cost_per_person), paid = credit + 1e-9 >= cost;
+          if (paid) credit = Math.round((credit - cost) * 100) / 100;
+          return '<tr class="border-t border-slate-100 dark:border-slate-800"><td class="py-2 px-3">' + s.date + '</td><td class="py-2 px-3 text-slate-500">' + esc(s.location || '-') + '</td>' +
+            '<td class="py-2 px-3 font-medium">RM ' + cost.toFixed(2) + '</td><td class="py-2 px-3 text-right">' +
+            (paid ? '<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold">Paid 已付</span>'
+                  : '<span class="px-2 py-0.5 rounded-full text-xs bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-semibold">Unpaid 未付</span>') + '</td></tr>';
+        }).join('');
+
+        return '<div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">' +
+          '<div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-3"><div><h3 class="text-xl font-bold">' + esc(m.name) + '</h3>' +
+          '<p class="text-xs text-slate-500 mt-1">Tel: ' + esc(m.contact_number || 'N/A') + ' · 推荐人: ' + esc(inv ? inv.name : 'Direct') + '</p></div>' +
+          '<div class="text-right"><div class="text-xs text-slate-400">当前净余额</div><div class="text-lg font-extrabold ' + (m.Total_Balance > 0 ? 'text-rose-600' : 'text-emerald-600') + '">RM ' + m.Total_Balance.toFixed(2) + '</div></div></div>' +
+          '<div class="grid grid-cols-3 gap-2 text-center bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl"><div><div class="text-xs text-slate-500">场次</div><div class="font-bold">' + m.total_sessions + '</div></div>' +
+          '<div><div class="text-xs text-slate-500">总消费</div><div class="font-bold">RM ' + m.total_expenses.toFixed(2) + '</div></div>' +
+          '<div><div class="text-xs text-slate-500">总已付</div><div class="font-bold text-emerald-600">RM ' + m.paid.toFixed(2) + '</div></div></div>' +
+          '<table class="w-full text-sm text-left"><thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800"><tr><th class="py-2 px-3">Date</th><th class="py-2 px-3">Location</th><th class="py-2 px-3">Share</th><th class="py-2 px-3 text-right">Status</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="4" class="py-6 text-center text-slate-400">暂无参与记录</td></tr>') + '</tbody></table></div>';
+      }).join('');
+    }
+
+    function validateMemberName(raw, excludeId) {
+      var name = (raw || '').trim().replace(/\s+/g, ' ');
+      if (!name) return '成员姓名 (name) 不能为空';
+      if (/^\d+$/.test(name)) return '成员姓名不能为纯数字';
+      if (!/[A-Za-z\u4e00-\u9fa5]/.test(name)) return '成员姓名必须包含英文字母或汉字';
+      if (!/^[A-Za-z0-9\u4e00-\u9fa5\s().'&/-]+$/.test(name)) return '包含不支持的特殊符号';
+      if (db.members.some(function (m) { return Number(m.id) !== Number(excludeId) && normKey(m.name) === normKey(name); })) {
+        return '该成员姓名已存在 (忽略大小写重复)';
+      }
+      return null;
+    }
+
+    function renderMemberManageDropdowns() {
+      var sorted = db.members.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+      document.getElementById('new-m-invited').innerHTML = '<option value="">None (直接加入)</option>' + sorted.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+      document.getElementById('adj-member-select').innerHTML = sorted.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+      var editSel = document.getElementById('edit-m-select');
+      var prev = editSel.value;
+      editSel.innerHTML = sorted.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+      if (prev && sorted.some(function (m) { return String(m.id) === String(prev); })) editSel.value = prev;
+      populateEditMemberForm();
+    }
+    function populateEditMemberForm() {
+      var m = db.members.find(function (x) { return Number(x.id) === Number(document.getElementById('edit-m-select').value); });
+      if (!m) return;
+      document.getElementById('edit-m-name').value = m.name;
+      document.getElementById('edit-m-contact').value = m.contact_number || '';
+    }
+    function addNewMember() {
+      var raw = document.getElementById('new-m-name').value;
+      var err = validateMemberName(raw, null);
+      if (err) return showToast(err);
+      var cleanName = raw.trim().replace(/\s+/g, ' ');
+      var fl = parseFirstLast(cleanName);
+      var nextId = db.members.length ? Math.max.apply(null, db.members.map(function (m) { return Number(m.id); })) + 1 : 1;
+      var inv = document.getElementById('new-m-invited').value;
+      db.members.push({
+        id: nextId,
+        name: cleanName,
+        invited_by_id: inv ? Number(inv) : null,
+        first_name: fl.first_name,
+        last_name: fl.last_name,
+        contact_number: document.getElementById('new-m-contact').value.trim()
+      });
+      document.getElementById('new-m-name').value = '';
+      document.getElementById('new-m-contact').value = '';
+      saveDB(); refreshAllViews(); showToast('已添加成员: ' + cleanName);
+    }
+    function updateMemberInfo() {
+      var m = db.members.find(function (x) { return Number(x.id) === Number(document.getElementById('edit-m-select').value); });
+      if (!m) return;
+      var raw = document.getElementById('edit-m-name').value;
+      var err = validateMemberName(raw, m.id);
+      if (err) return showToast(err);
+      var cleanName = raw.trim().replace(/\s+/g, ' ');
+      var fl = parseFirstLast(cleanName);
+      m.name = cleanName;
+      m.first_name = fl.first_name;
+      m.last_name = fl.last_name;
+      m.contact_number = document.getElementById('edit-m-contact').value.trim();
+      saveDB(); refreshAllViews(); showToast('成员资料已更新');
+    }
+    function deleteMemberRecord() {
+      var mId = Number(document.getElementById('edit-m-select').value);
+      var m = db.members.find(function (x) { return Number(x.id) === mId; });
+      if (!m || !confirm('Delete "' + m.name + '"? 确定删除该成员吗？')) return;
+      db.attendance = db.attendance.filter(function (a) { return Number(a.member_id) !== mId; });
+      db.payments = db.payments.filter(function (p) { return Number(p.member_id) !== mId; });
+      db.members = db.members.filter(function (x) { return Number(x.id) !== mId; });
+      saveDB(); refreshAllViews(); showToast('已删除成员: ' + m.name);
+    }
+
+    // 8. Refresh & Init
+    function refreshAllViews() {
+      var tasks = [
+        renderMatrix, populateLocations, renderAssignDropdown, renderSessionsHistory,
+        renderEditSessionDropdown, renderPayBySessionDropdown, renderPayByMemberDropdown,
+        renderPaymentLogs, renderLedgerSelectors, renderMemberManageDropdowns
+      ];
+      tasks.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } });
+      safeIcons();
+    }
+
+    (function init() {
+      var today = new Date().toISOString().split('T')[0];
+      document.getElementById('cost-date').value = today;
+      document.getElementById('adj-date').value = today;
+      setTheme(currentTheme);
+      refreshAllViews();
+    })();
+  </script>
+</body>
+</html>
